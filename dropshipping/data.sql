@@ -139,33 +139,8 @@ INSERT IGNORE INTO `dropshipping_settings` (`key`, `value`, `type`, `description
 ('notification_email', '', 'string', 'Email for import notifications'),
 ('enable_import_notifications', '1', 'boolean', 'Send notifications for import activities');
 
--- Insert default plan limits for existing packages (if any)
-INSERT IGNORE INTO `dropshipping_plan_limits` (`package_id`, `monthly_import_limit`, `total_import_limit`, `bulk_import_limit`, `auto_sync_enabled`, `settings`)
-SELECT 
-    `id`,
-    CASE 
-        WHEN `type` = 'free' THEN 10
-        WHEN `type` = 'paid' THEN 100
-        ELSE 50
-    END,
-    -1,
-    CASE 
-        WHEN `type` = 'free' THEN 5
-        WHEN `type` = 'paid' THEN 50
-        ELSE 20
-    END,
-    CASE 
-        WHEN `type` = 'paid' THEN 1
-        ELSE 0
-    END,
-    JSON_OBJECT(
-        'auto_update_prices', false,
-        'auto_update_stock', true,
-        'import_reviews', false
-    )
-FROM `tl_saas_packages` 
-WHERE `id` NOT IN (SELECT `package_id` FROM `dropshipping_plan_limits`);
+-- Note: Plan limits will be set when the plugin is activated for specific packages
+-- This avoids referencing main database tables during tenant database creation
 
--- Register the plugin in tl_plugins table
-INSERT IGNORE INTO `tl_plugins` (`name`, `location`, `author`, `description`, `version`, `unique_indentifier`, `is_activated`, `namespace`, `url`, `type`) VALUES
-('Dropshipping', 'dropshipping', 'TLCommerce', 'WooCommerce product dropshipping integration for multi-tenant stores', '1.0.0', UUID(), 0, 'Plugin\\Dropshipping\\', 'http://www.tlcommerce.com/', 'saas'); 
+-- Note: Plugin registration is handled by the insertThirdPartyPluginTables method
+-- to ensure compatibility with tenant database structure 

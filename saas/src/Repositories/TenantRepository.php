@@ -93,13 +93,16 @@ class TenantRepository
             $query->table('model_has_roles')->insert($user_role_data);
 
             //Set System Name
-            $settings_data = [
-                'settings_id' => getGeneralSettingId('system_name'),
-                'value' => $saas_account->store_name
-            ];
+            $system_name_setting = $query->table('tl_general_settings')->where('name', 'system_name')->first();
+            if ($system_name_setting) {
+                $settings_data = [
+                    'settings_id' => $system_name_setting->id,
+                    'value' => $saas_account->store_name
+                ];
 
-            $query->table('tl_general_settings_has_values')->where('settings_id', getGeneralSettingId('system_name'))->delete();
-            $query->table('tl_general_settings_has_values')->insert($settings_data);
+                $query->table('tl_general_settings_has_values')->where('settings_id', $system_name_setting->id)->delete();
+                $query->table('tl_general_settings_has_values')->insert($settings_data);
+            }
 
             //Add user to default products
             $query->table('tl_com_products')->update([
@@ -142,7 +145,8 @@ class TenantRepository
                 return false;
             }
 
-            $language_details = DB::table('tl_languages')->where('id', $saas_account->initial_language)->first();
+            // Use the main database connection explicitly
+            $language_details = DB::connection(config('database.default'))->table('tl_languages')->where('id', $saas_account->initial_language)->first();
 
             $tenant_db_language_details = $query->table('tl_languages')->where('code', $language_details->code)->first();
 
@@ -184,7 +188,8 @@ class TenantRepository
                 return false;
             }
 
-            $currency_details = DB::table('tl_saas_currencies')->where('id', $saas_account->initial_currency)->first();
+            // Use the main database connection explicitly
+            $currency_details = DB::connection(config('database.default'))->table('tl_saas_currencies')->where('id', $saas_account->initial_currency)->first();
 
             $tenant_db_currency_details = $query->table('tl_com_currencies')->where('code', $currency_details->code)->first();
             $tenant_currency_id = "";
@@ -223,7 +228,8 @@ class TenantRepository
      */
     public function insertThirdPartyPluginTables($query)
     {
-        $all_plugins_location = DB::table('tl_plugins')->where('type', '=', 'outside')->pluck('location')->toArray();
+        // Use the main database connection explicitly for plugin data
+        $all_plugins_location = DB::connection(config('database.default'))->table('tl_plugins')->where('type', '=', 'outside')->pluck('location')->toArray();
         $installed_plugins_locations = $query->table('tl_plugins')->pluck('location')->toArray();
         $uninstalled_plugin_locations = array_diff($all_plugins_location, $installed_plugins_locations);
 
@@ -242,17 +248,18 @@ class TenantRepository
                 $sql = file_get_contents($dropshipping_sql_path);
                 $query->unprepared($sql);
 
-                // Also insert the dropshipping plugin record
-                $dropshipping_plugin = DB::table('tl_plugins')->where('location', 'dropshipping')->first();
+                // Also insert the dropshipping plugin record (get from main database)
+                $dropshipping_plugin = DB::connection(config('database.default'))->table('tl_plugins')->where('location', 'dropshipping')->first();
                 if ($dropshipping_plugin) {
                     $query->table('tl_plugins')->insert([
                         'name' => $dropshipping_plugin->name,
                         'description' => $dropshipping_plugin->description,
-                        'type' => $dropshipping_plugin->type,
                         'location' => $dropshipping_plugin->location,
                         'author' => $dropshipping_plugin->author,
                         'version' => $dropshipping_plugin->version,
-                        'plugin_activation_status' => $dropshipping_plugin->plugin_activation_status,
+                        'unique_indentifier' => $dropshipping_plugin->unique_indentifier ?? uniqid(),
+                        'namespace' => $dropshipping_plugin->namespace ?? 'Plugin\\Dropshipping\\',
+                        'url' => $dropshipping_plugin->url ?? '',
                         'is_activated' => 0, // Will be activated if in package
                         'created_at' => now(),
                         'updated_at' => now(),
@@ -268,8 +275,9 @@ class TenantRepository
     public function updateAllTenantPluginData($query, $package_id)
     {
         try {
-            $tlcommerce_plugin_location = DB::table('tl_plugins')->where('location', '=', 'tlecommercecore')->value('location');
-            $plugin_locations = DB::table('tl_saas_package_has_plugins')
+            // Use the main database connection explicitly for plugin and package data
+            $tlcommerce_plugin_location = DB::connection(config('database.default'))->table('tl_plugins')->where('location', '=', 'tlecommercecore')->value('location');
+            $plugin_locations = DB::connection(config('database.default'))->table('tl_saas_package_has_plugins')
                 ->join('tl_plugins', 'tl_plugins.id', '=', 'tl_saas_package_has_plugins.plugin_id')
                 ->where('package_id', '=', $package_id)
                 ->pluck('tl_plugins.location')
@@ -285,6 +293,11 @@ class TenantRepository
                 $query->table('tl_plugins')
                     ->whereNotIn('location', $plugin_locations)
                     ->update(['is_activated' => 0]);
+
+                // Set up dropshipping plan limits if dropshipping is activated
+                if (in_array('dropshipping', $plugin_locations)) {
+                    $this->setupDropshippingPlanLimits($query, $package_id);
+                }
             } else {
                 $query->table('tl_plugins')->update(['is_activated' => 0]);
             }
@@ -301,13 +314,74 @@ class TenantRepository
     }
 
     /**
+     * Set up dropshipping plan limits for the tenant
+     */
+    private function setupDropshippingPlanLimits($query, $package_id)
+    {
+        try {
+            // Get package type from main database
+            $package = DB::connection(config('database.default'))->table('tl_saas_packages')->where('id', $package_id)->first();
+
+            if (!$package) {
+                return;
+            }
+
+            // Check if plan limits already exist
+            $existing_limits = $query->table('dropshipping_plan_limits')->where('package_id', $package_id)->first();
+
+            if ($existing_limits) {
+                return; // Already exists
+            }
+
+            // Set limits based on package type
+            $monthly_limit = 50; // default
+            $bulk_limit = 20; // default
+            $auto_sync = 0; // default
+
+            if ($package->type === 'free') {
+                $monthly_limit = 10;
+                $bulk_limit = 5;
+                $auto_sync = 0;
+            } elseif ($package->type === 'paid') {
+                $monthly_limit = 100;
+                $bulk_limit = 50;
+                $auto_sync = 1;
+            }
+
+            // Insert plan limits
+            $query->table('dropshipping_plan_limits')->insert([
+                'package_id' => $package_id,
+                'monthly_import_limit' => $monthly_limit,
+                'total_import_limit' => -1, // unlimited
+                'bulk_import_limit' => $bulk_limit,
+                'auto_sync_enabled' => $auto_sync,
+                'settings' => json_encode([
+                    'auto_update_prices' => false,
+                    'auto_update_stock' => true,
+                    'import_reviews' => false
+                ]),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        } catch (\Exception $e) {
+            // Log error but don't fail the entire process
+            Log::channel('tenant_database')->info(json_encode([
+                'message' => 'Error setting up dropshipping plan limits',
+                'package_id' => $package_id,
+                'error' => $e->getMessage()
+            ]));
+        }
+    }
+
+    /**
      * Update tenant payment method data
      */
     public function updateAllTenantPaymentMethodData($query, $package_id)
     {
         try {
-            $permitted_payment_methods = DB::table('tl_saas_package_has_payment_methods')->where('package_id', '=', $package_id)->pluck('payment_method_id');
-            $available_payment_methods = DB::table('tl_com_payment_methods')->whereIn('id', $permitted_payment_methods)->select('id', 'name')->get();
+            // Use the main database connection explicitly for package data
+            $permitted_payment_methods = DB::connection(config('database.default'))->table('tl_saas_package_has_payment_methods')->where('package_id', '=', $package_id)->pluck('payment_method_id');
+            $available_payment_methods = DB::connection(config('database.default'))->table('tl_com_payment_methods')->whereIn('id', $permitted_payment_methods)->select('id', 'name')->get();
             if (sizeof($permitted_payment_methods) > 0) {
 
                 //Remove payment method
