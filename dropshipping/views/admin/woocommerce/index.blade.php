@@ -4,97 +4,147 @@
 {{ translate('WooCommerce Configurations') }}
 @endsection
 
-@section('custom_css')
-<style>
-    .woo-config-card {
-        border: 1px solid #e3e6f0;
-        border-radius: 0.35rem;
-        transition: all 0.3s;
-    }
-
-    .woo-config-card:hover {
-        box-shadow: 0 0.15rem 1.75rem 0 rgba(33, 40, 50, 0.15);
-    }
-
-    .status-badge {
-        font-size: 0.75rem;
-    }
-</style>
-@endsection
-
 @section('main_content')
 <div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">{{ translate('WooCommerce Configurations') }}</h5>
-                <a href="{{ route('core.dropshipping.admin.woocommerce.create') }}" class="btn btn-primary">
-                    <i class="fa fa-plus"></i> {{ translate('Add New Configuration') }}
+    <div class="col-md-12">
+        <div class="align-items-center border-bottom2 d-flex flex-wrap gap-10 justify-content-between mb-4 pb-3">
+            <h4><i class="icofont-shop"></i> {{ translate('WooCommerce Configurations') }}</h4>
+            <div class="d-flex align-items-center gap-10 flex-wrap">
+                <a href="{{ route('admin.dropshipping.woocommerce.create') }}" class="btn long">
+                    <i class="icofont-plus"></i> {{ translate('Add WooCommerce Store') }}
                 </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if(session('success'))
+<div class="alert alert-success alert-dismissible fade show">
+    {{ session('success') }}
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+</div>
+@endif
+
+@if(session('error'))
+<div class="alert alert-danger alert-dismissible fade show">
+    {{ session('error') }}
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+</div>
+@endif
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-30">
+            <div class="card-header bg-white border-bottom2">
+                <h4>{{ translate('All WooCommerce Stores') }}</h4>
             </div>
             <div class="card-body">
                 @if($configs->count() > 0)
-                <div class="row">
-                    @foreach($configs as $config)
-                    <div class="col-md-6 col-lg-4 mb-4">
-                        <div class="woo-config-card p-3">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h6 class="mb-0">{{ $config->name }}</h6>
-                                <div class="dropdown">
-                                    <button class="btn btn-sm btn-link text-muted" type="button" data-toggle="dropdown">
-                                        <i class="fa fa-ellipsis-v"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-right">
-                                        <a class="dropdown-item" href="{{ route('core.dropshipping.admin.woocommerce.edit', $config->id) }}">
-                                            <i class="fa fa-edit"></i> {{ translate('Edit') }}
-                                        </a>
-                                        <button class="dropdown-item test-connection" data-id="{{ $config->id }}">
-                                            <i class="fa fa-plug"></i> {{ translate('Test Connection') }}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>#</th>
+                                <th>{{ translate('Store Name') }}</th>
+                                <th>{{ translate('Store URL') }}</th>
+                                <th>{{ translate('Description') }}</th>
+                                <th>{{ translate('Products') }}</th>
+                                <th>{{ translate('Status') }}</th>
+                                <th>{{ translate('Created') }}</th>
+                                <th>{{ translate('Actions') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($configs as $index => $config)
+                            <tr>
+                                <td>{{ $configs->firstItem() + $index }}</td>
+                                <td>
+                                    <strong>{{ $config->name }}</strong>
+                                </td>
+                                <td>
+                                    <a href="{{ $config->store_url }}" target="_blank" class="text-decoration-none">
+                                        {{ Str::limit($config->store_url, 40) }}
+                                        <i class="icofont-external-link ml-1"></i>
+                                    </a>
+                                </td>
+                                <td>
+                                    {{ Str::limit($config->description ?? 'No description', 50) }}
+                                </td>
+                                <td>
+                                    <span class="badge badge-info badge-pill">
+                                        {{ $config->total_products ?? 0 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    @if($config->is_active)
+                                    <span class="badge badge-success">
+                                        <i class="icofont-check"></i> {{ translate('Active') }}
+                                    </span>
+                                    @else
+                                    <span class="badge badge-danger">
+                                        <i class="icofont-close"></i> {{ translate('Inactive') }}
+                                    </span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        @if($config->created_at)
+                                        {{ date('M d, Y', strtotime($config->created_at)) }}
+                                        @else
+                                        N/A
+                                        @endif
+                                    </small>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle" data-toggle="dropdown">
+                                            {{ translate('Actions') }}
                                         </button>
-                                        <button class="dropdown-item sync-products" data-id="{{ $config->id }}">
-                                            <i class="fa fa-sync"></i> {{ translate('Sync Products') }}
-                                        </button>
-                                        <div class="dropdown-divider"></div>
-                                        <button class="dropdown-item text-danger delete-config" data-id="{{ $config->id }}">
-                                            <i class="fa fa-trash"></i> {{ translate('Delete') }}
-                                        </button>
+                                        <div class="dropdown-menu">
+                                            <a class="dropdown-item" href="{{ route('admin.dropshipping.woocommerce.edit', $config->id) }}">
+                                                <i class="icofont-edit text-primary"></i> {{ translate('Edit') }}
+                                            </a>
+
+                                            <button type="button" class="dropdown-item" onclick="testConnection({{ $config->id }})">
+                                                <i class="icofont-connection text-info"></i> {{ translate('Test Connection') }}
+                                            </button>
+
+                                            <form action="{{ route('admin.dropshipping.woocommerce.sync', $config->id) }}" method="POST" style="display: inline;">
+                                                @csrf
+                                                <button type="submit" class="dropdown-item" onclick="return confirm('{{ translate('Are you sure you want to sync products? This may take a while.') }}')">
+                                                    <i class="icofont-refresh text-success"></i> {{ translate('Sync Products') }}
+                                                </button>
+                                            </form>
+
+                                            <div class="dropdown-divider"></div>
+
+                                            <form action="{{ route('admin.dropshipping.woocommerce.destroy', $config->id) }}" method="POST" style="display: inline;">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="dropdown-item text-danger" onclick="return confirm('{{ translate('Are you sure you want to delete this configuration? This will also delete all associated products.') }}')">
+                                                    <i class="icofont-trash"></i> {{ translate('Delete') }}
+                                                </button>
+                                            </form>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
-
-                            <div class="mb-2">
-                                <small class="text-muted">{{ $config->description }}</small>
-                            </div>
-
-                            <div class="mb-2">
-                                <span class="badge {{ $config->is_active ? 'badge-success' : 'badge-secondary' }}">
-                                    {{ $config->is_active ? translate('Active') : translate('Inactive') }}
-                                </span>
-                                {!! $config->sync_status_badge !!}
-                            </div>
-
-                            <div class="small text-muted">
-                                <div><strong>{{ translate('Store URL') }}:</strong> {{ $config->store_url }}</div>
-                                <div><strong>{{ translate('Products') }}:</strong> {{ number_format($config->products_count) }}</div>
-                                <div><strong>{{ translate('Last Sync') }}:</strong>
-                                    {{ $config->last_sync_at ? $config->last_sync_at->diffForHumans() : translate('Never') }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    @endforeach
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
 
+                {{-- Pagination --}}
                 <div class="d-flex justify-content-center">
                     {{ $configs->links() }}
                 </div>
                 @else
                 <div class="text-center py-5">
-                    <i class="fa fa-store fa-3x text-muted mb-3"></i>
-                    <h5>{{ translate('No WooCommerce Configurations') }}</h5>
-                    <p class="text-muted">{{ translate('Add your first WooCommerce store configuration to start dropshipping') }}</p>
-                    <a href="{{ route('core.dropshipping.admin.woocommerce.create') }}" class="btn btn-primary">
-                        {{ translate('Add Configuration') }}
+                    <i class="icofont-shop fa-4x text-muted mb-4"></i>
+                    <h4 class="text-muted">{{ translate('No WooCommerce stores configured') }}</h4>
+                    <p class="text-muted mb-4">{{ translate('Configure your first WooCommerce store to start importing products for dropshipping') }}</p>
+                    <a href="{{ route('admin.dropshipping.woocommerce.create') }}" class="btn btn-primary btn-lg">
+                        <i class="icofont-plus"></i> {{ translate('Add WooCommerce Store') }}
                     </a>
                 </div>
                 @endif
@@ -102,90 +152,112 @@
         </div>
     </div>
 </div>
+
+{{-- Test Connection Modal --}}
+<div class="modal fade" id="testConnectionModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ translate('Testing Connection') }}</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="connectionLoader">
+                    <i class="icofont-spinner-alt-4 fa-spin fa-2x text-primary mb-3"></i>
+                    <p>{{ translate('Testing WooCommerce API connection...') }}</p>
+                </div>
+                <div id="connectionResult" style="display: none;">
+                    <div id="connectionSuccess" style="display: none;">
+                        <i class="icofont-check-circled fa-2x text-success mb-3"></i>
+                        <h5 class="text-success">{{ translate('Connection Successful!') }}</h5>
+                        <div id="storeInfo"></div>
+                    </div>
+                    <div id="connectionError" style="display: none;">
+                        <i class="icofont-close-circled fa-2x text-danger mb-3"></i>
+                        <h5 class="text-danger">{{ translate('Connection Failed') }}</h5>
+                        <div id="errorMessage" class="alert alert-danger"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">{{ translate('Close') }}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
-@section('custom_scripts')
+@section('custom_js')
 <script>
-    $(document).ready(function() {
-        // Test connection
-        $('.test-connection').on('click', function() {
-            var configId = $(this).data('id');
-            var btn = $(this);
+    function testConnection(configId) {
+        // Find the config data from the page
+        const config = @json($configs);
+        const configData = config.data.find(c => c.id === configId);
 
-            btn.html('<i class="fa fa-spinner fa-spin"></i> {{ translate("Testing...") }}');
-            btn.prop('disabled', true);
+        if (!configData) {
+            alert('Configuration not found');
+            return;
+        }
 
-            $.post('{{ route("core.dropshipping.admin.woocommerce.test-connection") }}', {
-                _token: '{{ csrf_token() }}',
-                config_id: configId
-            }).done(function(response) {
+        // Show modal
+        $('#testConnectionModal').modal('show');
+        $('#connectionLoader').show();
+        $('#connectionResult').hide();
+
+        // Make AJAX request
+        $.ajaxSetup({
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        });
+
+        $.post('{{ route("admin.dropshipping.woocommerce.test") }}', {
+                store_url: configData.store_url,
+                consumer_key: configData.consumer_key,
+                consumer_secret: configData.consumer_secret
+            })
+            .done(function(response) {
+                $('#connectionLoader').hide();
+                $('#connectionResult').show();
+
                 if (response.success) {
-                    toastNotification('success', '{{ translate("Connection successful") }}');
+                    $('#connectionSuccess').show();
+                    $('#connectionError').hide();
+
+                    if (response.store_info) {
+                        $('#storeInfo').html(`
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <h6 class="card-title">${response.store_info.name || 'Store'}</h6>
+                            <p class="card-text small">
+                                <strong>{{ translate('Version') }}:</strong> ${response.store_info.version || 'N/A'}<br>
+                                <strong>{{ translate('Products') }}:</strong> ${response.store_info.products_count || 0}
+                            </p>
+                        </div>
+                    </div>
+                `);
+                    }
                 } else {
-                    toastNotification('error', response.message);
+                    $('#connectionSuccess').hide();
+                    $('#connectionError').show();
+                    $('#errorMessage').text(response.message || '{{ translate("Unknown error occurred") }}');
                 }
-            }).fail(function() {
-                toastNotification('error', '{{ translate("Connection test failed") }}');
-            }).always(function() {
-                btn.html('<i class="fa fa-plug"></i> {{ translate("Test Connection") }}');
-                btn.prop('disabled', false);
+            })
+            .fail(function(xhr) {
+                $('#connectionLoader').hide();
+                $('#connectionResult').show();
+                $('#connectionSuccess').hide();
+                $('#connectionError').show();
+
+                let errorMsg = '{{ translate("Network error occurred") }}';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                $('#errorMessage').text(errorMsg);
             });
-        });
-
-        // Sync products
-        $('.sync-products').on('click', function() {
-            var configId = $(this).data('id');
-            var btn = $(this);
-
-            if (confirm('{{ translate("Are you sure you want to sync products? This may take some time.") }}')) {
-                btn.html('<i class="fa fa-spinner fa-spin"></i> {{ translate("Syncing...") }}');
-                btn.prop('disabled', true);
-
-                $.post('{{ route("core.dropshipping.admin.woocommerce.sync-products", ":id") }}'.replace(':id', configId), {
-                    _token: '{{ csrf_token() }}'
-                }).done(function(response) {
-                    if (response.success) {
-                        toastNotification('success', response.message);
-                        setTimeout(function() {
-                            location.reload();
-                        }, 2000);
-                    } else {
-                        toastNotification('error', response.message);
-                    }
-                }).fail(function() {
-                    toastNotification('error', '{{ translate("Sync failed") }}');
-                }).always(function() {
-                    btn.html('<i class="fa fa-sync"></i> {{ translate("Sync Products") }}');
-                    btn.prop('disabled', false);
-                });
-            }
-        });
-
-        // Delete configuration
-        $('.delete-config').on('click', function() {
-            var configId = $(this).data('id');
-
-            if (confirm('{{ translate("Are you sure you want to delete this configuration?") }}')) {
-                $.ajax({
-                    url: '{{ route("core.dropshipping.admin.woocommerce.delete", ":id") }}'.replace(':id', configId),
-                    type: 'DELETE',
-                    data: {
-                        _token: '{{ csrf_token() }}'
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            toastNotification('success', '{{ translate("Configuration deleted successfully") }}');
-                            location.reload();
-                        } else {
-                            toastNotification('error', response.message);
-                        }
-                    },
-                    error: function() {
-                        toastNotification('error', '{{ translate("Delete failed") }}');
-                    }
-                });
-            }
-        });
-    });
+    }
 </script>
 @endsection

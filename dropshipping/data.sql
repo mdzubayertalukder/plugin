@@ -164,4 +164,8 @@ SELECT
         'import_reviews', false
     )
 FROM `tl_saas_packages` 
-WHERE `id` NOT IN (SELECT `package_id` FROM `dropshipping_plan_limits`); 
+WHERE `id` NOT IN (SELECT `package_id` FROM `dropshipping_plan_limits`);
+
+-- Register the plugin in tl_plugins table
+INSERT IGNORE INTO `tl_plugins` (`name`, `location`, `author`, `description`, `version`, `unique_indentifier`, `is_activated`, `namespace`, `url`, `type`) VALUES
+('Dropshipping', 'dropshipping', 'TLCommerce', 'WooCommerce product dropshipping integration for multi-tenant stores', '1.0.0', UUID(), 0, 'Plugin\\Dropshipping\\', 'http://www.tlcommerce.com/', 'saas'); 
