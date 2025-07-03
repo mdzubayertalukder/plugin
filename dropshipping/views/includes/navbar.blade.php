@@ -17,7 +17,7 @@ $dropshippingActive = false;
 }
 } else {
 // Tenant: Use standard plugin check which respects package assignments
-$dropshippingActive = isActivePluging('dropshipping');
+$dropshippingActive = isActivePluging('dropshipping', true);
 }
 @endphp
 
@@ -66,8 +66,11 @@ $dropshippingActive = isActivePluging('dropshipping');
         <span class="link-title">{{ translate('Dropshipping') }}</span>
     </a>
     <ul class="nav sub-menu">
-        <li class="{{ Request::routeIs(['dropshipping.products.all', 'user.dropshipping.products']) ? 'active' : '' }}">
-            <a href="{{ route('dropshipping.products.all') }}">{{ translate('All Products') }}</a>
+        <li class="{{ Request::routeIs(['dropshipping.my.products']) ? 'active' : '' }}">
+            <a href="{{ route('dropshipping.my.products') }}">{{ translate('My Products') }}</a>
+        </li>
+        <li class="{{ Request::routeIs(['dropshipping.products.all', 'dropshipping.products', 'user.dropshipping.products']) ? 'active' : '' }}">
+            <a href="{{ route('dropshipping.products.all') }}">{{ translate('Browse Products') }}</a>
         </li>
         <li class="{{ Request::routeIs(['dropshipping.import.history', 'user.dropshipping.history']) ? 'active' : '' }}">
             <a href="{{ route('dropshipping.import.history') }}">{{ translate('Import History') }}</a>

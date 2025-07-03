@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class ProductImportController extends Controller
 {
@@ -62,11 +63,12 @@ class ProductImportController extends Controller
     }
 
     /**
-     * Import a single product (simplified - no database tracking)
+     * Import a single product
      */
     public function importSingle(Request $request, $productId)
     {
         try {
+            $tenantId = tenant('id');
             $userId = Auth::id();
 
             // Get the product from dropshipping products
@@ -82,23 +84,161 @@ class ProductImportController extends Controller
                 ], 404);
             }
 
-            // For now, just return success message
-            // You can implement actual product creation logic here later
+            // Check if already imported
+            $existingImport = DB::table('dropshipping_product_import_history')
+                ->where('tenant_id', $tenantId)
+                ->where('dropshipping_product_id', $productId)
+                ->where('import_status', 'completed')
+                ->first();
+
+            if ($existingImport) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This product has already been imported to your store.'
+                ]);
+            }
+
+            // Get markup percentage from request (default 20%)
+            $markupPercentage = $request->get('markup_percentage', 20);
+
+            // Calculate pricing
+            $originalPrice = $product->regular_price ?? $product->price;
+            $finalPrice = $originalPrice * (1 + $markupPercentage / 100);
+            $salePrice = null;
+
+            if ($product->sale_price) {
+                $salePrice = $product->sale_price * (1 + $markupPercentage / 100);
+            }
+
+            // Generate unique SKU
+            $sku = $this->generateUniqueSku($product->sku ?? 'DS-' . $productId);
+
+            // Extract first image
+            $thumbnailImageId = null;
+            if (!empty($product->images)) {
+                $images = json_decode($product->images, true);
+                if (is_array($images) && count($images) > 0) {
+                    // For now, we'll store the image URL in the thumbnail_image field
+                    // In a real system, you'd upload the image and get an ID
+                    if (is_array($images[0])) {
+                        $imageUrl = $images[0]['src'] ?? $images[0]['url'] ?? null;
+                    } else {
+                        $imageUrl = $images[0];
+                    }
+                    $thumbnailImageId = $imageUrl; // Store URL directly for now
+                }
+            }
+
+            // Create product in local database
+            $localProductId = DB::table('tl_com_products')->insertGetId([
+                'name' => $product->name,
+                'summary' => $product->short_description,
+                'description' => $product->description,
+                'permalink' => $this->generateUniqueSlug($product->slug ?? Str::slug($product->name)),
+                'product_type' => 1, // Default product type
+                'unit' => 15, // Default unit
+                'conditions' => 8, // Default condition
+                'has_variant' => 2, // No variant
+                'discount_type' => 2, // No discount
+                'thumbnail_image' => $thumbnailImageId,
+                'is_featured' => 2, // Not featured
+                'min_item_on_purchase' => 1,
+                'low_stock_quantity_alert' => 1,
+                'is_authentic' => 1,
+                'has_warranty' => 2, // No warranty
+                'has_replacement_warranty' => 2, // No replacement warranty
+                'is_refundable' => 2, // Not refundable
+                'is_active_cod' => 1, // COD active
+                'is_active_free_shipping' => 2, // Free shipping not active
+                'cod_location_type' => 'anywhere',
+                'is_active_attatchment' => 2, // No attachment
+                'shipping_cost' => 0,
+                'is_apply_multiple_qty_shipping_cost' => 1,
+                'is_enable_tax' => 2, // Tax not enabled
+                'status' => 1, // Active
+                'is_approved' => 1, // Approved
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Create product pricing record
+            DB::table('tl_com_single_product_price')->insert([
+                'product_id' => $localProductId,
+                'sku' => $sku,
+                'purchase_price' => $originalPrice,
+                'unit_price' => $finalPrice,
+                'quantity' => $product->stock_quantity ?? 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Create import history record
+            $importId = DB::table('dropshipping_product_import_history')->insertGetId([
+                'tenant_id' => $tenantId,
+                'woocommerce_store_id' => $product->woocommerce_config_id ?? 1,
+                'woocommerce_config_id' => $product->woocommerce_config_id ?? 1,
+                'woocommerce_product_id' => $product->woocommerce_product_id ?? $product->id,
+                'dropshipping_product_id' => $productId,
+                'local_product_id' => $localProductId,
+                'import_type' => 'manual',
+                'import_status' => 'completed',
+                'imported_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Product import initiated! (Feature coming soon)',
+                'message' => 'Product imported successfully to your store!',
                 'product_name' => $product->name,
-                'product_price' => $product->regular_price
+                'product_price' => number_format($finalPrice, 2),
+                'original_price' => number_format($originalPrice, 2),
+                'markup_applied' => $markupPercentage . '%',
+                'local_product_id' => $localProductId,
+                'sku' => $sku
             ]);
         } catch (\Exception $e) {
             Log::error('Product Import Error: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to import product. Please try again later.'
+                'message' => 'Failed to import product: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Generate unique SKU for the product
+     */
+    private function generateUniqueSku($baseSku)
+    {
+        $originalSku = $baseSku ?: 'DS-' . uniqid();
+        $sku = $originalSku;
+        $counter = 1;
+
+        while (DB::table('tl_com_single_product_price')->where('sku', $sku)->exists()) {
+            $sku = $originalSku . '-' . $counter;
+            $counter++;
+        }
+
+        return $sku;
+    }
+
+    /**
+     * Generate unique slug for the product
+     */
+    private function generateUniqueSlug($baseSlug)
+    {
+        $originalSlug = $baseSlug ?: Str::slug('product-' . uniqid());
+        $slug = $originalSlug;
+        $counter = 1;
+
+        while (DB::table('tl_com_products')->where('permalink', $slug)->exists()) {
+            $slug = $originalSlug . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
     }
 
     /**

@@ -234,6 +234,32 @@ class TenantRepository
                 $query->unprepared($sql);
             }
         }
+
+        // Special handling for dropshipping plugin (type = 'saas' but needs tenant setup)
+        if (!in_array('dropshipping', $installed_plugins_locations)) {
+            $dropshipping_sql_path = base_path('plugins/dropshipping/data.sql');
+            if (file_exists($dropshipping_sql_path)) {
+                $sql = file_get_contents($dropshipping_sql_path);
+                $query->unprepared($sql);
+
+                // Also insert the dropshipping plugin record
+                $dropshipping_plugin = DB::table('tl_plugins')->where('location', 'dropshipping')->first();
+                if ($dropshipping_plugin) {
+                    $query->table('tl_plugins')->insert([
+                        'name' => $dropshipping_plugin->name,
+                        'description' => $dropshipping_plugin->description,
+                        'type' => $dropshipping_plugin->type,
+                        'location' => $dropshipping_plugin->location,
+                        'author' => $dropshipping_plugin->author,
+                        'version' => $dropshipping_plugin->version,
+                        'plugin_activation_status' => $dropshipping_plugin->plugin_activation_status,
+                        'is_activated' => 0, // Will be activated if in package
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+        }
     }
 
     /**

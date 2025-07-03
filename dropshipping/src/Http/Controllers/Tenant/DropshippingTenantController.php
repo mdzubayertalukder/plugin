@@ -175,7 +175,7 @@ class DropshippingTenantController extends Controller
             ->join('dropshipping_products', 'dropshipping_products.id', '=', 'dropshipping_product_import_history.dropshipping_product_id')
             ->join('dropshipping_woocommerce_configs', 'dropshipping_woocommerce_configs.id', '=', 'dropshipping_product_import_history.woocommerce_config_id')
             ->where('dropshipping_product_import_history.tenant_id', $tenantId)
-            ->where('dropshipping_product_import_history.status', 'completed')
+            ->where('dropshipping_product_import_history.import_status', 'completed')
             ->select(
                 'dropshipping_product_import_history.*',
                 'dropshipping_products.name as product_name',
@@ -187,6 +187,85 @@ class DropshippingTenantController extends Controller
             ->paginate(20);
 
         return view('plugin/dropshipping::tenant.imported', compact('importedProducts'));
+    }
+
+    /**
+     * Show tenant's local products (the actual imported products in their store)
+     */
+    public function myProducts(Request $request)
+    {
+        $tenantId = tenant('id');
+
+        try {
+            // Get all local products that were imported via dropshipping
+            $localProductsQuery = DB::table('tl_com_products')
+                ->leftJoin('tl_com_single_product_price', 'tl_com_single_product_price.product_id', '=', 'tl_com_products.id')
+                ->leftJoin('dropshipping_product_import_history', 'dropshipping_product_import_history.local_product_id', '=', 'tl_com_products.id')
+                ->leftJoin('dropshipping_woocommerce_configs', 'dropshipping_woocommerce_configs.id', '=', 'dropshipping_product_import_history.woocommerce_config_id')
+                ->where('dropshipping_product_import_history.tenant_id', $tenantId)
+                ->where('dropshipping_product_import_history.import_status', 'completed')
+                ->select(
+                    'tl_com_products.*',
+                    'tl_com_single_product_price.sku',
+                    'tl_com_single_product_price.unit_price',
+                    'tl_com_single_product_price.purchase_price',
+                    'tl_com_single_product_price.quantity as stock_quantity',
+                    'dropshipping_product_import_history.imported_at',
+                    'dropshipping_woocommerce_configs.name as store_name'
+                )
+                ->orderBy('dropshipping_product_import_history.imported_at', 'desc');
+
+            // Add search functionality
+            if ($request->has('search') && $request->search) {
+                $search = $request->search;
+                $localProductsQuery->where('tl_com_products.name', 'like', '%' . $search . '%');
+            }
+
+            $localProducts = $localProductsQuery->paginate(24);
+
+            // Process products for display
+            $localProducts->getCollection()->transform(function ($product) {
+                // Calculate markup percentage
+                if ($product->purchase_price && $product->unit_price && $product->purchase_price > 0) {
+                    $product->markup_percentage = round((($product->unit_price - $product->purchase_price) / $product->purchase_price) * 100, 2);
+                } else {
+                    $product->markup_percentage = 0;
+                }
+
+                // Format dates
+                $product->imported_at_formatted = $product->imported_at ?
+                    \Carbon\Carbon::parse($product->imported_at)->format('M d, Y') : '';
+
+                return $product;
+            });
+
+            // Get statistics
+            $stats = [
+                'total_products' => DB::table('dropshipping_product_import_history')
+                    ->where('tenant_id', $tenantId)
+                    ->where('import_status', 'completed')
+                    ->count(),
+                'this_month' => DB::table('dropshipping_product_import_history')
+                    ->where('tenant_id', $tenantId)
+                    ->where('import_status', 'completed')
+                    ->whereYear('imported_at', now()->year)
+                    ->whereMonth('imported_at', now()->month)
+                    ->count(),
+                'total_value' => DB::table('tl_com_single_product_price')
+                    ->leftJoin('dropshipping_product_import_history', 'dropshipping_product_import_history.local_product_id', '=', 'tl_com_single_product_price.product_id')
+                    ->where('dropshipping_product_import_history.tenant_id', $tenantId)
+                    ->where('dropshipping_product_import_history.import_status', 'completed')
+                    ->sum('tl_com_single_product_price.unit_price')
+            ];
+
+            return view('plugin/dropshipping::tenant.my-products', compact('localProducts', 'stats'));
+        } catch (\Exception $e) {
+            // Fallback if there are any errors
+            $localProducts = collect();
+            $stats = ['total_products' => 0, 'this_month' => 0, 'total_value' => 0];
+
+            return view('plugin/dropshipping::tenant.my-products', compact('localProducts', 'stats'));
+        }
     }
 
     /**
