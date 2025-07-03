@@ -66,7 +66,7 @@ class DropshippingTenantController extends Controller
     {
         try {
             // Get all available products from all active stores
-            $products = DB::table('dropshipping_products')
+            $productsQuery = DB::table('dropshipping_products')
                 ->join('dropshipping_woocommerce_configs', 'dropshipping_woocommerce_configs.id', '=', 'dropshipping_products.woocommerce_config_id')
                 ->where('dropshipping_woocommerce_configs.is_active', 1)
                 ->where('dropshipping_products.status', 'publish')
@@ -74,8 +74,27 @@ class DropshippingTenantController extends Controller
                     'dropshipping_products.*',
                     'dropshipping_woocommerce_configs.name as store_name'
                 )
-                ->orderBy('dropshipping_products.created_at', 'desc')
-                ->paginate(24); // 24 products per page for nice card grid
+                ->orderBy('dropshipping_products.created_at', 'desc');
+
+            $products = $productsQuery->paginate(24); // 24 products per page for nice card grid
+
+            // Process images for each product
+            $products->getCollection()->transform(function ($product) {
+                // Extract first image from JSON images data
+                $image = null;
+                if (!empty($product->images)) {
+                    $images = json_decode($product->images, true);
+                    if (is_array($images) && count($images) > 0) {
+                        if (is_array($images[0])) {
+                            $image = $images[0]['src'] ?? $images[0]['url'] ?? null;
+                        } else {
+                            $image = $images[0];
+                        }
+                    }
+                }
+                $product->image = $image;
+                return $product;
+            });
 
             // Get available stores for filter
             $stores = DB::table('dropshipping_woocommerce_configs')
@@ -86,7 +105,7 @@ class DropshippingTenantController extends Controller
             // Filter by store if selected
             $selectedStore = $request->get('store_id');
             if ($selectedStore) {
-                $products = DB::table('dropshipping_products')
+                $filteredQuery = DB::table('dropshipping_products')
                     ->join('dropshipping_woocommerce_configs', 'dropshipping_woocommerce_configs.id', '=', 'dropshipping_products.woocommerce_config_id')
                     ->where('dropshipping_woocommerce_configs.is_active', 1)
                     ->where('dropshipping_products.status', 'publish')
@@ -95,8 +114,27 @@ class DropshippingTenantController extends Controller
                         'dropshipping_products.*',
                         'dropshipping_woocommerce_configs.name as store_name'
                     )
-                    ->orderBy('dropshipping_products.created_at', 'desc')
-                    ->paginate(24);
+                    ->orderBy('dropshipping_products.created_at', 'desc');
+
+                $products = $filteredQuery->paginate(24);
+
+                // Process images for filtered products too
+                $products->getCollection()->transform(function ($product) {
+                    // Extract first image from JSON images data
+                    $image = null;
+                    if (!empty($product->images)) {
+                        $images = json_decode($product->images, true);
+                        if (is_array($images) && count($images) > 0) {
+                            if (is_array($images[0])) {
+                                $image = $images[0]['src'] ?? $images[0]['url'] ?? null;
+                            } else {
+                                $image = $images[0];
+                            }
+                        }
+                    }
+                    $product->image = $image;
+                    return $product;
+                });
             }
 
             return view('plugin/dropshipping::tenant.all-products', compact(

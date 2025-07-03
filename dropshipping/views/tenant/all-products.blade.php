@@ -53,7 +53,7 @@
                     <div class="card h-100 shadow-sm border-0 product-card">
                         <!-- Product Image -->
                         <div class="position-relative overflow-hidden" style="height: 200px;">
-                            @if($product->image)
+                            @if(isset($product->image) && $product->image)
                             <img src="{{ $product->image }}"
                                 class="card-img-top h-100 w-100"
                                 style="object-fit: cover;"
