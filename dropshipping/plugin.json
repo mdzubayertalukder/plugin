@@ -1,0 +1,10 @@
+{
+    "name": "Dropshipping",
+    "location": "dropshipping",
+    "namespace": "Plugin\\Dropshipping\\",
+    "version": "1.0.0",
+    "author": "TLCommerce",
+    "url": "http://www.tlcommerce.com/",
+    "description": "WooCommerce product dropshipping integration for multi-tenant stores",
+    "is_verified": true
+}
