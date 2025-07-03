@@ -1,0 +1,10 @@
+{
+    "name": "Saas Support Ticket",
+    "location": "support-ticket",
+    "namespace": "Plugin\\SupportTicket\\",
+    "version": "1.2.0",
+    "author": "Themelooks",
+    "url": "http://www.themelooks.com/",
+    "description": "Support Ticket plugin for Saas",
+    "is_verified": true
+}

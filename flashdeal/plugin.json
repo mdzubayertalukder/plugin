@@ -1,0 +1,10 @@
+{
+    "name": "Flash Deal",
+    "location": "flashdeal",
+    "namespace": "Plugin\\Flashdeal\\",
+    "version": "1.0.0",
+    "author": "Themelooks",
+    "url": "http://www.themelooks.com/",
+    "description": "Flash Deal plugin of Tl-commerce",
+    "is_verified": true
+}

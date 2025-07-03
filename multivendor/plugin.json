@@ -1,0 +1,9 @@
+{
+    "name": "Multivendor",
+    "location": "multivendor",
+    "namespace": "Plugin\\Multivendor\\",
+    "version": "1.0.0",
+    "author": "Themelooks",
+    "url": "http://www.themelooks.com/",
+    "description": "Multivendor plugin of Tl-commerce"
+}

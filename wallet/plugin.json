@@ -1,0 +1,10 @@
+{
+    "name": "Wallet",
+    "location": "wallet",
+    "namespace": "Plugin\\Wallet\\",
+    "version": "1.0.0",
+    "author": "Multipurc",
+    "url": "http://www.themelooks.com/",
+    "description": "Wallet plugin of Tl-commerce",
+   "is_verified": true
+}

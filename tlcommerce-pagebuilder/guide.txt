@@ -1,0 +1,9 @@
+1. Translate Field:
+   - input name should have '_t_' in end
+   - form-group class should have "translate-field" class
+
+2. For Css other that bg and advance , list theme in style tab
+
+3. style css field should have '_c_' in the end of there input name.
+
+4. background, desktop, mobile, tab don't use this word in any input field name.

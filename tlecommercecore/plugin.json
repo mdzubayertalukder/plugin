@@ -1,0 +1,10 @@
+{
+    "name": "TL Commerce Core",
+    "location": "tlecommercecore",
+    "namespace": "Plugin\\TlcommerceCore\\",
+    "version": "1.0.0",
+    "author": "Themelooks",
+    "url": "http:\/\/www.themelooks.com\/",
+    "description": "Core plugin of Tl-commerce",
+    "is_verified": true
+}

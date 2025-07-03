@@ -1,0 +1,7 @@
+DROP TABLE page_builder_widget_translations;
+DROP TABLE page_builder_sections_layout_widget_properties;
+DROP TABLE page_builder_section_layout_widgets;
+DROP TABLE page_builder_section_layouts;
+DROP TABLE page_builder_sections_properties;
+DROP TABLE page_builder_widgets;
+DROP TABLE page_builder_sections;

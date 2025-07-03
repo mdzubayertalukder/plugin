@@ -1,0 +1,11 @@
+{
+    "name": "Tlcommerce Page Builder",
+    "location": "tlcommerce-pagebuilder",
+    "namespace": "Plugin\\TlPageBuilder\\",
+    "version": "1.0.1",
+    "author": "Themelooks",
+    "url": "http:\/\/www.themelooks.com\/",
+    "description": "Page Builder Plugin for Tlcommerce",
+    "license": true,
+    "is_verified": false
+}
