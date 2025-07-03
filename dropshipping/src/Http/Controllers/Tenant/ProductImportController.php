@@ -31,7 +31,7 @@ class ProductImportController extends Controller
         $tenantId = tenant('id');
 
         // Get available WooCommerce stores from main database
-        $stores = DB::connection(config('database.default'))->table('dropshipping_woocommerce_configs')
+        $stores = DB::connection('mysql')->table('dropshipping_woocommerce_configs')
             ->where('is_active', 1)
             ->get();
 
@@ -39,7 +39,7 @@ class ProductImportController extends Controller
 
         $products = collect();
         if ($selectedStore) {
-            $products = DB::connection(config('database.default'))->table('dropshipping_products')
+            $products = DB::connection('mysql')->table('dropshipping_products')
                 ->where('woocommerce_config_id', $selectedStore)
                 ->where('status', 'publish')
                 ->when($request->get('search'), function ($query, $search) {
@@ -72,7 +72,7 @@ class ProductImportController extends Controller
             $userId = Auth::id();
 
             // Get the product from dropshipping products (main database)
-            $product = DB::connection(config('database.default'))->table('dropshipping_products')
+            $product = DB::connection('mysql')->table('dropshipping_products')
                 ->where('id', $productId)
                 ->where('status', 'publish')
                 ->first();
@@ -295,7 +295,7 @@ class ProductImportController extends Controller
             foreach ($productIds as $productId) {
                 try {
                     // Get product details (from main database)
-                    $product = DB::connection(config('database.default'))->table('dropshipping_products')->where('id', $productId)->first();
+                    $product = DB::connection('mysql')->table('dropshipping_products')->where('id', $productId)->first();
                     if (!$product) {
                         $errors[] = "Product ID {$productId} not found";
                         continue;
@@ -407,7 +407,7 @@ class ProductImportController extends Controller
         }
 
         try {
-            $product = DB::connection(config('database.default'))->table('dropshipping_products')
+            $product = DB::connection('mysql')->table('dropshipping_products')
                 ->where('id', $request->product_id)
                 ->first();
 
