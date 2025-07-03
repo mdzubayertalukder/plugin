@@ -30,8 +30,8 @@ class ProductImportController extends Controller
     {
         $tenantId = tenant('id');
 
-        // Get available WooCommerce stores
-        $stores = DB::table('dropshipping_woocommerce_configs')
+        // Get available WooCommerce stores from main database
+        $stores = DB::connection(config('database.default'))->table('dropshipping_woocommerce_configs')
             ->where('is_active', 1)
             ->get();
 
@@ -39,7 +39,7 @@ class ProductImportController extends Controller
 
         $products = collect();
         if ($selectedStore) {
-            $products = DB::table('dropshipping_products')
+            $products = DB::connection(config('database.default'))->table('dropshipping_products')
                 ->where('woocommerce_config_id', $selectedStore)
                 ->where('status', 'publish')
                 ->when($request->get('search'), function ($query, $search) {
@@ -71,8 +71,8 @@ class ProductImportController extends Controller
             $tenantId = tenant('id');
             $userId = Auth::id();
 
-            // Get the product from dropshipping products
-            $product = DB::table('dropshipping_products')
+            // Get the product from dropshipping products (main database)
+            $product = DB::connection(config('database.default'))->table('dropshipping_products')
                 ->where('id', $productId)
                 ->where('status', 'publish')
                 ->first();
@@ -250,7 +250,7 @@ class ProductImportController extends Controller
 
         $validator = Validator::make($request->all(), [
             'product_ids' => 'required|array|min:1',
-            'product_ids.*' => 'integer|exists:dropshipping_products,id',
+            'product_ids.*' => 'integer',
             'markup_percentage' => 'nullable|numeric|min:0|max:1000',
             'fixed_markup' => 'nullable|numeric|min:0',
         ]);
@@ -294,8 +294,8 @@ class ProductImportController extends Controller
 
             foreach ($productIds as $productId) {
                 try {
-                    // Get product details
-                    $product = DB::table('dropshipping_products')->where('id', $productId)->first();
+                    // Get product details (from main database)
+                    $product = DB::connection(config('database.default'))->table('dropshipping_products')->where('id', $productId)->first();
                     if (!$product) {
                         $errors[] = "Product ID {$productId} not found";
                         continue;
@@ -394,7 +394,7 @@ class ProductImportController extends Controller
     public function previewImport(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'product_id' => 'required|integer|exists:dropshipping_products,id',
+            'product_id' => 'required|integer',
             'markup_percentage' => 'nullable|numeric|min:0|max:1000',
             'fixed_markup' => 'nullable|numeric|min:0',
         ]);
@@ -407,7 +407,7 @@ class ProductImportController extends Controller
         }
 
         try {
-            $product = DB::table('dropshipping_products')
+            $product = DB::connection(config('database.default'))->table('dropshipping_products')
                 ->where('id', $request->product_id)
                 ->first();
 

@@ -36,8 +36,8 @@ class DropshippingTenantController extends Controller
         ];
 
         $recentImports = DB::table('dropshipping_product_import_history')
-            ->join('dropshipping_products', 'dropshipping_products.id', '=', 'dropshipping_product_import_history.dropshipping_product_id')
-            ->join('dropshipping_woocommerce_configs', 'dropshipping_woocommerce_configs.id', '=', 'dropshipping_product_import_history.woocommerce_config_id')
+            ->join(DB::connection(config('database.default'))->getDatabaseName() . '.dropshipping_products', 'dropshipping_products.id', '=', 'dropshipping_product_import_history.dropshipping_product_id')
+            ->join(DB::connection(config('database.default'))->getDatabaseName() . '.dropshipping_woocommerce_configs', 'dropshipping_woocommerce_configs.id', '=', 'dropshipping_product_import_history.woocommerce_config_id')
             ->where('dropshipping_product_import_history.tenant_id', $tenantId)
             ->select(
                 'dropshipping_product_import_history.*',
@@ -48,7 +48,7 @@ class DropshippingTenantController extends Controller
             ->limit(10)
             ->get();
 
-        $availableStores = DB::table('dropshipping_woocommerce_configs')
+        $availableStores = DB::connection(config('database.default'))->table('dropshipping_woocommerce_configs')
             ->where('is_active', 1)
             ->count();
 
@@ -65,8 +65,8 @@ class DropshippingTenantController extends Controller
     public function allProducts(Request $request)
     {
         try {
-            // Get all available products from all active stores
-            $productsQuery = DB::table('dropshipping_products')
+            // Get all available products from all active stores (from main database)
+            $productsQuery = DB::connection(config('database.default'))->table('dropshipping_products')
                 ->join('dropshipping_woocommerce_configs', 'dropshipping_woocommerce_configs.id', '=', 'dropshipping_products.woocommerce_config_id')
                 ->where('dropshipping_woocommerce_configs.is_active', 1)
                 ->where('dropshipping_products.status', 'publish')
@@ -96,8 +96,8 @@ class DropshippingTenantController extends Controller
                 return $product;
             });
 
-            // Get available stores for filter
-            $stores = DB::table('dropshipping_woocommerce_configs')
+            // Get available stores for filter (from main database)
+            $stores = DB::connection(config('database.default'))->table('dropshipping_woocommerce_configs')
                 ->where('is_active', 1)
                 ->select('id', 'name')
                 ->get();
@@ -105,7 +105,7 @@ class DropshippingTenantController extends Controller
             // Filter by store if selected
             $selectedStore = $request->get('store_id');
             if ($selectedStore) {
-                $filteredQuery = DB::table('dropshipping_products')
+                $filteredQuery = DB::connection(config('database.default'))->table('dropshipping_products')
                     ->join('dropshipping_woocommerce_configs', 'dropshipping_woocommerce_configs.id', '=', 'dropshipping_products.woocommerce_config_id')
                     ->where('dropshipping_woocommerce_configs.is_active', 1)
                     ->where('dropshipping_products.status', 'publish')
@@ -172,8 +172,8 @@ class DropshippingTenantController extends Controller
         $tenantId = tenant('id');
 
         $importedProducts = DB::table('dropshipping_product_import_history')
-            ->join('dropshipping_products', 'dropshipping_products.id', '=', 'dropshipping_product_import_history.dropshipping_product_id')
-            ->join('dropshipping_woocommerce_configs', 'dropshipping_woocommerce_configs.id', '=', 'dropshipping_product_import_history.woocommerce_config_id')
+            ->join(DB::connection(config('database.default'))->getDatabaseName() . '.dropshipping_products', 'dropshipping_products.id', '=', 'dropshipping_product_import_history.dropshipping_product_id')
+            ->join(DB::connection(config('database.default'))->getDatabaseName() . '.dropshipping_woocommerce_configs', 'dropshipping_woocommerce_configs.id', '=', 'dropshipping_product_import_history.woocommerce_config_id')
             ->where('dropshipping_product_import_history.tenant_id', $tenantId)
             ->where('dropshipping_product_import_history.import_status', 'completed')
             ->select(
@@ -201,7 +201,7 @@ class DropshippingTenantController extends Controller
             $localProductsQuery = DB::table('tl_com_products')
                 ->leftJoin('tl_com_single_product_price', 'tl_com_single_product_price.product_id', '=', 'tl_com_products.id')
                 ->leftJoin('dropshipping_product_import_history', 'dropshipping_product_import_history.local_product_id', '=', 'tl_com_products.id')
-                ->leftJoin('dropshipping_woocommerce_configs', 'dropshipping_woocommerce_configs.id', '=', 'dropshipping_product_import_history.woocommerce_config_id')
+                ->leftJoin(DB::connection(config('database.default'))->getDatabaseName() . '.dropshipping_woocommerce_configs', 'dropshipping_woocommerce_configs.id', '=', 'dropshipping_product_import_history.woocommerce_config_id')
                 ->where('dropshipping_product_import_history.tenant_id', $tenantId)
                 ->where('dropshipping_product_import_history.import_status', 'completed')
                 ->select(
@@ -399,7 +399,7 @@ class DropshippingTenantController extends Controller
     public function getProductDetails($id)
     {
         try {
-            $product = DB::table('dropshipping_products')
+            $product = DB::connection(config('database.default'))->table('dropshipping_products')
                 ->join('dropshipping_woocommerce_configs', 'dropshipping_woocommerce_configs.id', '=', 'dropshipping_products.woocommerce_config_id')
                 ->where('dropshipping_products.id', $id)
                 ->select(
