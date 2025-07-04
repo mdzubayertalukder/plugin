@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS `dropshipping_product_import_history` (
     `woocommerce_store_id` bigint(20) UNSIGNED NULL,
     `woocommerce_config_id` bigint(20) UNSIGNED NOT NULL,
     `woocommerce_product_id` bigint(20) UNSIGNED NULL,
-    `dropshipping_product_id` bigint(20) UNSIGNED NOT NULL,
+    `dropshipping_product_id` bigint(20) UNSIGNED NULL,
     `local_product_id` bigint(20) UNSIGNED NULL,
     `import_type` enum('single','bulk','auto_sync','manual') NOT NULL DEFAULT 'single',
     `import_status` enum('pending','completed','failed') NOT NULL DEFAULT 'pending',
@@ -97,8 +97,7 @@ CREATE TABLE IF NOT EXISTS `dropshipping_product_import_history` (
     KEY `dropshipping_import_history_status_index` (`status`),
     KEY `dropshipping_import_history_import_type_index` (`import_type`),
     KEY `dropshipping_import_history_imported_by_foreign` (`imported_by`),
-    CONSTRAINT `dropshipping_import_history_woocommerce_config_id_foreign` FOREIGN KEY (`woocommerce_config_id`) REFERENCES `dropshipping_woocommerce_configs` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `dropshipping_import_history_dropshipping_product_id_foreign` FOREIGN KEY (`dropshipping_product_id`) REFERENCES `dropshipping_products` (`id`) ON DELETE CASCADE
+    CONSTRAINT `dropshipping_import_history_woocommerce_config_id_foreign` FOREIGN KEY (`woocommerce_config_id`) REFERENCES `dropshipping_woocommerce_configs` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Plan Limits Table
