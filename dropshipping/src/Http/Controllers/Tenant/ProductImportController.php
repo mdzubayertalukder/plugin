@@ -172,11 +172,76 @@ class ProductImportController extends Controller
                 'updated_at' => now(),
             ]);
 
+            // Check if WooCommerce config exists in tenant DB
+            $tenantConfigId = null;
+            if ($product->woocommerce_config_id) {
+                $tenantConfig = DB::table('dropshipping_woocommerce_configs')->where('id', $product->woocommerce_config_id)->first();
+                if (!$tenantConfig) {
+                    // Copy config from main DB
+                    $mainConfig = DB::connection('mysql')->table('dropshipping_woocommerce_configs')->where('id', $product->woocommerce_config_id)->first();
+                    if ($mainConfig) {
+                        $tenantConfigId = DB::table('dropshipping_woocommerce_configs')->insertGetId([
+                            'id' => $mainConfig->id, // Use same ID for consistency
+                            'name' => $mainConfig->name,
+                            'description' => $mainConfig->description,
+                            'store_url' => $mainConfig->store_url,
+                            'consumer_key' => $mainConfig->consumer_key,
+                            'consumer_secret' => $mainConfig->consumer_secret,
+                            'is_active' => $mainConfig->is_active,
+                            'last_sync_at' => $mainConfig->last_sync_at,
+                            'total_products' => $mainConfig->total_products,
+                            'sync_status' => $mainConfig->sync_status,
+                            'created_by' => $mainConfig->created_by,
+                            'updated_by' => $mainConfig->updated_by,
+                            'created_at' => $mainConfig->created_at,
+                            'updated_at' => $mainConfig->updated_at,
+                            'deleted_at' => $mainConfig->deleted_at,
+                        ]);
+                    } else {
+                        // If not found in main DB, create a default config
+                        $tenantConfigId = DB::table('dropshipping_woocommerce_configs')->insertGetId([
+                            'name' => 'Default Store',
+                            'description' => 'Auto-created store config',
+                            'store_url' => '',
+                            'consumer_key' => '',
+                            'consumer_secret' => '',
+                            'is_active' => 1,
+                            'last_sync_at' => now(),
+                            'total_products' => 0,
+                            'sync_status' => 'not_synced',
+                            'created_by' => $userId,
+                            'updated_by' => $userId,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                } else {
+                    $tenantConfigId = $tenantConfig->id;
+                }
+            } else {
+                // No config ID in product, create a default config
+                $tenantConfigId = DB::table('dropshipping_woocommerce_configs')->insertGetId([
+                    'name' => 'Default Store',
+                    'description' => 'Auto-created store config',
+                    'store_url' => '',
+                    'consumer_key' => '',
+                    'consumer_secret' => '',
+                    'is_active' => 1,
+                    'last_sync_at' => now(),
+                    'total_products' => 0,
+                    'sync_status' => 'not_synced',
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
             // Create import history record
             $importId = DB::table('dropshipping_product_import_history')->insertGetId([
                 'tenant_id' => $tenantId,
-                'woocommerce_store_id' => $product->woocommerce_config_id ?? 1,
-                'woocommerce_config_id' => $product->woocommerce_config_id ?? 1,
+                'woocommerce_store_id' => $tenantConfigId,
+                'woocommerce_config_id' => $tenantConfigId,
                 'woocommerce_product_id' => $product->woocommerce_product_id ?? $product->id,
                 'dropshipping_product_id' => $productId,
                 'local_product_id' => $localProductId,
