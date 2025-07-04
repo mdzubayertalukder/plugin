@@ -158,7 +158,7 @@
                                         <strong>${{ number_format($product->unit_price ?? 0, 2) }}</strong>
                                     </td>
                                     <td>
-                                        @if($product->markup_percentage > 0)
+                                        @if(isset($product->markup_percentage) && $product->markup_percentage > 0)
                                         <span class="badge bg-success">+{{ $product->markup_percentage }}%</span>
                                         @else
                                         <span class="badge bg-secondary">0%</span>
